@@ -1,17 +1,17 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { RoleEnum } from '../enum/role.enum';
 import { ClientCredentials } from './client-credentials.entity';
 import { User } from '../../UserModule/entity/user.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import { Collection, Entity, OneToMany, PrimaryKey, Property } from 'mikro-orm';
+import { v4 } from 'uuid';
 
 @Entity()
 export class Role extends Audit {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryKey()
+  id: string = v4();
 
-  @Column({
+  @Property({
     type: 'enum',
-    enum: RoleEnum,
     nullable: false,
     unique: true,
   })
@@ -21,8 +21,13 @@ export class Role extends Audit {
     () => ClientCredentials,
     (clientCredentials: ClientCredentials) => clientCredentials.role,
   )
-  clientCredentials: ClientCredentials[];
+  clientCredentials: Collection<ClientCredentials> = new Collection<
+    ClientCredentials
+  >(this);
 
-  @OneToMany<User>(() => User, (user: User) => user.role)
-  users: User[];
+  @OneToMany<User>(
+    () => User,
+    (user: User) => user.role,
+  )
+  users: Collection<User> = new Collection<User>(this);
 }

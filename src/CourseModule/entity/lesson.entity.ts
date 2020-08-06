@@ -1,41 +1,41 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  Unique,
-} from 'typeorm';
 import { Course } from './course.entity';
 import { Part } from './part.entity';
 import { CourseTaken } from '../../CourseTakenModule/entity/course.taken.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import {
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryKey,
+  Property,
+  Unique,
+} from 'mikro-orm';
+import { v4 } from 'uuid';
 
-@Unique(['sequenceNumber', 'course'])
+@Unique({ properties: ['sequenceNumber', 'course'] })
 @Entity()
 export class Lesson extends Audit {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryKey()
+  id: string = v4();
 
-  @Column({
+  @Property({
     name: 'title',
   })
   title: string;
 
-  @Column({
+  @Property({
     name: 'description',
   })
   description: string;
 
-  @Column({
+  @Property({
     name: 'seq_num',
   })
   sequenceNumber: number;
 
-  @ManyToOne<Course>('Course', (course: Course) => course.lessons)
-  @JoinColumn({
-    name: 'course_id',
+  @ManyToOne<Course>({
+    entity: 'Course',
+    inversedBy: (course: Course) => course.lessons,
   })
   course: Course;
 

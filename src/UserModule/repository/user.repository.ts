@@ -1,35 +1,37 @@
-import { createQueryBuilder, EntityRepository, Repository } from 'typeorm';
 import { User } from '../entity/user.entity';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(User)
-export class UserRepository extends Repository<User> {
+@Repository(User)
+export class UserRepository extends EntityRepository<User> {
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.findOne({ email }, { relations: ['role'] });
+    return this.findOne({ email });
   }
 
   async findByIdWithCertificates(id: string): Promise<User | undefined> {
-    return this.findOneOrFail(id, { relations: ['certificates'] });
+    return this.findOneOrFail({ id });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public async getCertificateByUser(userId): Promise<any[]> {
-    return createQueryBuilder('user', 'user')
-      .innerJoinAndSelect(
+    return await this.createQueryBuilder('user')
+      .join(
         'certificate_users_user',
         'certificate_user',
-        'certificate_user.userId = user.id',
+        { $eq: userId },
+        'innerJoin',
       )
-      .innerJoinAndSelect(
+      .join(
         'certificate',
         'certificate',
-        'certificate.id = certificate_user.certificateId',
+        { $eq: 'certificate_user.certificateId' },
+        'innerJoin',
       )
-      .where('user.id = :userId', { userId })
-      .getRawMany();
+      .where('user.id = ?', [userId])
+      .execute();
   }
 
   async findByIdWithCourses(id: string): Promise<User | undefined> {
-    return this.findOneOrFail(id, { relations: ['createdCourses'] });
+    return this.findOneOrFail({ id });
   }
 
   async findByEmailAndFacebookId(

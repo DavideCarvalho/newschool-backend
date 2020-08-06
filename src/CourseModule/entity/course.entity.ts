@@ -1,54 +1,55 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
 import { Lesson } from './lesson.entity';
 import { Expose } from 'class-transformer';
 import slugify from 'slugify';
 import { CourseTaken } from '../../CourseTakenModule/entity/course.taken.entity';
+import { Entity, OneToMany, PrimaryKey, Property } from 'mikro-orm';
+import { v4 } from 'uuid';
 
 @Entity()
 export class Course extends Audit {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column({
+  @Property({
     unique: true,
   })
   @Expose()
   title: string;
 
-  @Column()
+  @Property()
   @Expose()
   description: string;
 
-  @Column()
+  @Property()
   @Expose()
   authorName: string;
 
-  @Column()
+  @Property()
   @Expose()
   authorDescription: string;
 
-  @Column({
+  @Property({
     type: 'int',
   })
   @Expose()
   workload: number;
 
-  @Column({
+  @Property({
     nullable: true,
   })
   @Expose()
   thumbUrl?: string;
 
-  @Column({
+  @Property({
     type: 'boolean',
     default: true,
   })
   @Expose()
   enabled: boolean;
 
-  @Column()
+  @Property()
   photoName: string;
 
   @OneToMany<Lesson>('Lesson', (lesson: Lesson) => lesson.course)
@@ -60,7 +61,7 @@ export class Course extends Audit {
   )
   takenCourses: CourseTaken[];
 
-  @Column()
+  @Property()
   @Expose()
   get slug(): string {
     return slugify(this.title, { replacement: '-', lower: true });

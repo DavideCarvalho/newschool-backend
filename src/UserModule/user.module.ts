@@ -1,5 +1,4 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { SecurityModule } from '../SecurityModule/security.module';
@@ -12,15 +11,13 @@ import { UserService } from './service/user.service';
 import { UserMapper } from './mapper/user.mapper';
 import { ChangePasswordService } from './service/change-password.service';
 import { CertificateModule } from '../CertificateModule/certificate.module';
+import { MikroOrmModule } from 'nestjs-mikro-orm';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      UserRepository,
-      ChangePassword,
-      ChangePasswordRepository,
-    ]),
+    MikroOrmModule.forFeature({
+      entities: [User, ChangePassword],
+    }),
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),

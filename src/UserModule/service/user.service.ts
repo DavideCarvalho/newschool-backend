@@ -15,7 +15,6 @@ import { ChangePasswordService } from './change-password.service';
 import { MailerService } from '@nest-modules/mailer';
 import { RoleService } from '../../SecurityModule/service/role.service';
 import { Role } from '../../SecurityModule/entity/role.entity';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { AppConfigService as ConfigService } from '../../ConfigModule/service/app-config.service';
 import { ChangePassword } from '../entity/change-password.entity';
 import { AdminChangePasswordDTO } from '../dto/admin-change-password.dto';
@@ -29,10 +28,12 @@ import { UserUpdateDTO } from '../dto/user-update.dto';
 import { ChangePasswordDTO } from '../dto/change-password.dto';
 import { CertificateService } from '../../CertificateModule/service/certificate.service';
 import { Certificate } from '../../CertificateModule/entity/certificate.entity';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class UserService {
   constructor(
+    @InjectRepository(User)
     private readonly repository: UserRepository,
     private readonly changePasswordService: ChangePasswordService,
     private readonly mailerService: MailerService,
@@ -42,22 +43,18 @@ export class UserService {
     private readonly roleService: RoleService,
   ) {}
 
-  @Transactional()
   public async getAll(): Promise<User[]> {
-    return this.repository.find();
+    return this.repository.findAll();
   }
 
   public async findById(id: User['id']): Promise<User> {
-    const user: User | undefined = await this.repository.findOne(id, {
-      relations: ['role'],
-    });
+    const user: User | undefined = await this.repository.findOne({ id });
     if (!user) {
       throw new NotFoundException('User not found');
     }
     return user;
   }
 
-  @Transactional()
   public async getCertificateByUser(userId): Promise<CertificateUserDTO[]> {
     const certificates = await this.repository.getCertificateByUser(userId);
 
@@ -82,12 +79,14 @@ export class UserService {
     const salt: string = this.createSalt();
     const hashPassword: string = this.createHashedPassword(user.password, salt);
     try {
-      return await this.repository.save({
+      const createdUser = await this.repository.create({
         ...user,
         salt,
         password: hashPassword,
         role,
       });
+      await this.repository.persistAndFlush(createdUser);
+      return createdUser;
     } catch (e) {
       if (e.code === 'ER_DUP_ENTRY') {
         throw new ConflictException('User with same email already exists');
@@ -96,13 +95,12 @@ export class UserService {
     }
   }
 
-  @Transactional()
   public async delete(id: User['id']): Promise<void> {
     await this.findById(id);
-    await this.repository.delete(id);
+    await this.repository.remove({ id });
+    await this.repository.flush();
   }
 
-  @Transactional()
   public async update(
     id: User['id'],
     userUpdatedInfo: UserUpdateDTO,
@@ -110,19 +108,23 @@ export class UserService {
     const user: User = await this.findById(id);
     if (userUpdatedInfo.role) {
       const role = await this.roleService.findByRoleName(userUpdatedInfo.role);
-      return this.repository.save({
+      const updatedUser = await this.repository.create({
         ...user,
         ...userUpdatedInfo,
         role,
         id: user.id,
       });
+      await this.repository.persistAndFlush(updatedUser);
+      return updatedUser;
     }
-    return await this.repository.save({
+    const updatedUser = await this.repository.create({
       ...user,
       ...userUpdatedInfo,
       role: user.role,
       id: user.id,
     });
+    await this.repository.persistAndFlush(updatedUser);
+    return updatedUser;
   }
 
   public async forgotPassword(
@@ -136,7 +138,6 @@ export class UserService {
     return changePassword.id;
   }
 
-  @Transactional()
   public async findByEmail(email: string): Promise<User> {
     const user: User = await this.repository.findByEmail(email);
     if (!user) {
@@ -145,7 +146,6 @@ export class UserService {
     return user;
   }
 
-  @Transactional()
   public async findByEmailAndPassword(
     email: string,
     password: string,
@@ -157,7 +157,6 @@ export class UserService {
     return user;
   }
 
-  @Transactional()
   public async findByEmailAndFacebookId(
     email: string,
     facebookId: string,
@@ -172,7 +171,6 @@ export class UserService {
     return user;
   }
 
-  @Transactional()
   public async validateChangePassword(changePasswordRequestId: string) {
     const changePassword: ChangePassword = await this.changePasswordService.findById(
       changePasswordRequestId,
@@ -186,7 +184,6 @@ export class UserService {
     }
   }
 
-  @Transactional()
   public async adminChangePassword(
     id: string,
     changePasswordDTO: AdminChangePasswordDTO,
@@ -202,10 +199,11 @@ export class UserService {
       changePasswordDTO.newPassword,
       user.salt,
     );
-    return await this.repository.save(user);
+    const createdChangedPasswordRequest = await this.repository.create(user);
+    await this.repository.persistAndFlush(createdChangedPasswordRequest);
+    return createdChangedPasswordRequest;
   }
 
-  @Transactional()
   public async changePassword(
     id: string,
     changePasswordDTO: ChangePasswordDTO,
@@ -226,10 +224,11 @@ export class UserService {
       changePasswordDTO.newPassword,
       user.salt,
     );
-    return await this.repository.save(user);
+    const changedPassword = await this.repository.create(user);
+    await this.repository.persistAndFlush(changedPassword);
+    return changedPassword;
   }
 
-  @Transactional()
   public async changePasswordForgotPasswordFlow(
     changePasswordRequestId: string,
     changePasswordDTO: ChangePasswordForgotFlowDTO,
@@ -247,10 +246,11 @@ export class UserService {
       changePasswordDTO.newPassword,
       user.salt,
     );
-    return await this.repository.save(user);
+    const changedPassword = await this.repository.create(user);
+    await this.repository.persistAndFlush(changedPassword);
+    return changedPassword;
   }
 
-  @Transactional()
   public async addCertificateToUser(
     userId: User['id'],
     certificateId: Certificate['id'],
@@ -259,10 +259,12 @@ export class UserService {
       this.repository.findByIdWithCertificates(userId),
       this.certificateService.findById(certificateId),
     ]);
-    return await this.repository.save({
+    const updatedUserWithCertificates = await this.repository.create({
       ...user,
       certificates: [...user.certificates, certificate],
     });
+    await this.repository.persistAndFlush(updatedUserWithCertificates);
+    return updatedUserWithCertificates;
   }
 
   private createSalt(): string {

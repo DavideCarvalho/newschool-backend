@@ -1,22 +1,21 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { CourseTakenStatusEnum } from '../enum/enum';
 import { User } from '../../UserModule/entity/user.entity';
 import { CourseTaken } from '../entity/course.taken.entity';
 import { CertificateDTO } from '../dto/certificate.dto';
-import { MoreThanOrEqual } from 'typeorm/index';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(CourseTaken)
-export class CourseTakenRepository extends Repository<CourseTaken> {
+@Repository(CourseTaken)
+export class CourseTakenRepository extends EntityRepository<CourseTaken> {
   public async findByUserId(
     user: CourseTaken['user'],
   ): Promise<CourseTaken[] | undefined> {
-    return this.find({ relations: ['user', 'course'], where: { user: user } });
+    return this.find({ user: user });
   }
 
   public async findByUser(
     user: CourseTaken['user'],
   ): Promise<CourseTaken[] | undefined> {
-    return this.find({ relations: ['user', 'course'], where: { user } });
+    return this.find({ user });
   }
 
   public async getActiveUsersQuantity(): Promise<number> {
@@ -24,51 +23,41 @@ export class CourseTakenRepository extends Repository<CourseTaken> {
     const activeUsers: { user_id: number }[] = await this.createQueryBuilder(
       'coursetaken',
     )
-      .where('coursetaken.completion', MoreThanOrEqual<number>(30))
-      .select('DISTINCT coursetaken.user', 'user')
-      .orderBy('user')
-      .getRawMany();
+      .where('coursetaken.completion >= ?', [30])
+      .select('coursetaken.user', true)
+      .orderBy({ user: 'ASC' })
+      .execute();
     return activeUsers.length;
   }
 
   public async getCertificateQuantity(): Promise<number> {
-    return this.count({ where: { status: CourseTakenStatusEnum.COMPLETED } });
+    return this.count({ status: CourseTakenStatusEnum.COMPLETED });
   }
 
   public async findByUserAndCourseWithAllRelations(
     user: CourseTaken['user'],
     course: CourseTaken['course'],
   ): Promise<CourseTaken> {
-    return this.findOne(
-      { user, course },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    return this.findOne({ user, course });
   }
 
   public async findCertificateByUserAndCourse(
     user: CourseTaken['user'],
     course: CourseTaken['course'],
   ): Promise<CertificateDTO> {
-    return this.findOne(
-      { user, course, status: CourseTakenStatusEnum.COMPLETED },
-      { relations: ['user', 'course'] },
-    );
+    return this.findOne({
+      user,
+      course,
+      status: CourseTakenStatusEnum.COMPLETED,
+    });
   }
 
   public async findCertificatesByUserId(
     user: User['id'],
   ): Promise<CertificateDTO[]> {
     return this.find({
-      relations: ['user', 'course'],
-      where: { user: user, status: CourseTakenStatusEnum.COMPLETED },
+      user: user,
+      status: CourseTakenStatusEnum.COMPLETED,
     });
   }
 
@@ -88,30 +77,26 @@ export class CourseTakenRepository extends Repository<CourseTaken> {
     user: CourseTaken['user'],
     course: CourseTaken['course'],
   ): Promise<CourseTaken | undefined> {
-    return this.findOne({ user, course }, { relations: ['user', 'course'] });
+    return this.findOne({ user, course });
   }
 
   public async getUsersWithTakenCourses(): Promise<number> {
     // TODO: ci version of mysql has "only_full_group_by", check how to disable it to make this query better
     const entities: any[] = await this.createQueryBuilder('coursetaken')
-      .where('coursetaken.status = :courseTakenStatus', {
-        courseTakenStatus: CourseTakenStatusEnum.TAKEN,
-      })
-      .select('DISTINCT coursetaken.user', 'user')
-      .orderBy('user')
-      .getRawMany();
+      .where('coursetaken.status = ?', [CourseTakenStatusEnum.TAKEN])
+      .select('coursetaken.user', true)
+      .orderBy({ user: 'ASC' })
+      .execute();
     return entities.length;
   }
 
   public async getUsersWithCompletedCourses(): Promise<number> {
     // TODO: ci version of mysql has "only_full_group_by", check how to disable it to make this query better
     const entities: any[] = await this.createQueryBuilder('coursetaken')
-      .where('coursetaken.status = :courseTakenStatus', {
-        courseTakenStatus: CourseTakenStatusEnum.COMPLETED,
-      })
-      .select('DISTINCT coursetaken.user', 'user')
-      .orderBy('user')
-      .getRawMany();
+      .where('coursetaken.status = ?', [CourseTakenStatusEnum.COMPLETED])
+      .select('coursetaken.user', true)
+      .orderBy({ user: 'ASC' })
+      .execute();
     return entities.length;
   }
 
@@ -119,9 +104,8 @@ export class CourseTakenRepository extends Repository<CourseTaken> {
     // TODO: ci version of mysql has "only_full_group_by", check how to disable it to make this query better
     // TODO: Typeorm Bug, getCount query is wrong, check https://github.com/typeorm/typeorm/issues/6522
     const entities: any[] = await this.createQueryBuilder('coursetaken')
-      .select('DISTINCT coursetaken.user', 'user')
-      .orderBy('user')
-      .getRawMany();
+      .groupBy('coursetaken.user')
+      .execute();
     return entities.length;
   }
 }

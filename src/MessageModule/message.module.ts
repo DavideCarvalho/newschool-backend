@@ -2,15 +2,18 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { SecurityModule } from '../SecurityModule/security.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { TemplateRepository } from './repository/template.repository';
 import { TemplateMapper } from './mapper/template.mapper';
 import { MessageController } from './controller/message.controller';
 import { MessageService } from './service/message.service';
+import { MikroOrmModule } from 'nestjs-mikro-orm';
+import { Templates } from './entity/templates.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([TemplateRepository]),
+    MikroOrmModule.forFeature({
+      entities: [Templates],
+    }),
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),

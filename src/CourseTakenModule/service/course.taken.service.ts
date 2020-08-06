@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { CourseTakenStatusEnum } from '../enum/enum';
 import { UserMapper } from '../../UserModule/mapper/user.mapper';
 import { User } from '../../UserModule/entity/user.entity';
@@ -27,10 +26,13 @@ import { Course } from '../../CourseModule/entity/course.entity';
 import { LessonService } from '../../CourseModule/service/lesson.service';
 import { Lesson } from '../../CourseModule/entity/lesson.entity';
 import { Test } from '../../CourseModule/entity/test.entity';
+import { InjectRepository } from 'nestjs-mikro-orm';
+import { Templates } from '../../MessageModule/entity/templates.entity';
 
 @Injectable()
 export class CourseTakenService {
   constructor(
+    @InjectRepository(CourseTaken)
     private readonly repository: CourseTakenRepository,
     private readonly mapper: CourseTakenMapper,
     private readonly userMapper: UserMapper,
@@ -41,7 +43,6 @@ export class CourseTakenService {
     private readonly testService: TestService,
   ) {}
 
-  @Transactional()
   public async add(newCourseTakenDto: NewCourseTakenDTO): Promise<void> {
     const [user, course]: [User, Course] = await Promise.all([
       this.userService.findById(newCourseTakenDto.userId),
@@ -76,7 +77,8 @@ export class CourseTakenService {
     newCourseTaken.status = CourseTakenStatusEnum.TAKEN;
     newCourseTaken.courseStartDate = new Date(Date.now());
 
-    await this.repository.save(newCourseTaken);
+    const createdCourseTaken = await this.repository.create(newCourseTaken);
+    await this.repository.persistAndFlush(createdCourseTaken);
   }
 
   public async getActiveUsersQuantity(): Promise<number> {
@@ -159,7 +161,8 @@ export class CourseTakenService {
       updatedCourseTaken.completion = await this.calculateCompletion(
         updatedCourseTaken,
       );
-      await this.repository.save(updatedCourseTaken);
+      const advancedCourse = await this.repository.create(updatedCourseTaken);
+      await this.repository.persistAndFlush(advancedCourse);
       return;
     }
 
@@ -177,7 +180,8 @@ export class CourseTakenService {
       updatedCourseTaken.completion = await this.calculateCompletion(
         updatedCourseTaken,
       );
-      await this.repository.save(updatedCourseTaken);
+      const advancedCourse = await this.repository.create(updatedCourseTaken);
+      await this.repository.persistAndFlush(advancedCourse);
       return;
     }
 
@@ -201,16 +205,18 @@ export class CourseTakenService {
       updatedCourseTaken.completion = await this.calculateCompletion(
         updatedCourseTaken,
       );
-      await this.repository.save(updatedCourseTaken);
+      const advancedCourse = await this.repository.create(updatedCourseTaken);
+      await this.repository.persistAndFlush(advancedCourse);
       return;
     }
 
-    await this.repository.save({
+    const finishedCourse = await this.repository.create({
       ...courseTaken,
       completion: 100,
       status: CourseTakenStatusEnum.COMPLETED,
       courseCompleteDate: new Date(Date.now()),
     });
+    await this.repository.persistAndFlush(finishedCourse);
   }
 
   private getNextSequenceNumber(step: Lesson | Part | Test): number {
@@ -220,7 +226,6 @@ export class CourseTakenService {
     return step.sequenceNumber + 1;
   }
 
-  @Transactional()
   public async update(
     userId: string,
     courseId: string,
@@ -245,7 +250,7 @@ export class CourseTakenService {
       course,
     );
 
-    return this.repository.save(
+    const updatedCourseTaken = await this.repository.create(
       this.mapper.toEntity({
         ...courseTaken,
         ...courseTakenUpdatedInfo,
@@ -254,9 +259,10 @@ export class CourseTakenService {
         currentPart,
       }),
     );
+    await this.repository.persistAndFlush(updatedCourseTaken);
+    return updatedCourseTaken;
   }
 
-  @Transactional()
   public async findAllByUserId(userId: string): Promise<CourseTaken[]> {
     const user: User = await this.userService.findById(userId);
     const courseTaken: CourseTaken[] = await this.repository.findByUser(user);
@@ -266,7 +272,6 @@ export class CourseTakenService {
     return courseTaken;
   }
 
-  @Transactional()
   public async getAllByCourseId(courseId: string): Promise<CourseTaken[]> {
     const course: Course = await this.courseService.findById(courseId);
     const courseTaken: CourseTaken[] = await this.repository.findByCourse(
@@ -278,7 +283,6 @@ export class CourseTakenService {
     return courseTaken;
   }
 
-  @Transactional()
   public async findByUserIdAndCourseId(
     userId: string,
     courseId: string,
@@ -287,10 +291,10 @@ export class CourseTakenService {
       this.userService.findById(userId),
       this.courseService.findById(courseId),
     ]);
-    const courseTaken: CourseTaken = await this.repository.findOne(
-      { user, course },
-      { relations: ['user', 'course'] },
-    );
+    const courseTaken: CourseTaken = await this.repository.findOne({
+      user,
+      course,
+    });
     if (!courseTaken) {
       throw new NotFoundException('Course not taken by user');
     }
@@ -343,16 +347,15 @@ export class CourseTakenService {
     return completion > 100 ? 100 : completion;
   }
 
-  @Transactional()
   public async delete(userId: string, courseId: string): Promise<void> {
     const [user, course]: [User, Course] = await Promise.all([
       this.userService.findById(userId),
       this.courseService.findById(courseId),
     ]);
-    await this.repository.delete({ user, course });
+    await this.repository.remove({ user, course });
+    await this.repository.flush();
   }
 
-  @Transactional()
   public async getCertificate(
     userId: string,
     courseId: string,
@@ -364,7 +367,6 @@ export class CourseTakenService {
     return this.repository.findCertificateByUserAndCourse(user, course);
   }
 
-  @Transactional()
   public async getCertificates(user: User['id']): Promise<CertificateDTO[]> {
     return this.repository.findCertificatesByUserId(user);
   }

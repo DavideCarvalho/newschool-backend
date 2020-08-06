@@ -1,12 +1,4 @@
 import * as crypto from 'crypto';
-import {
-  Column,
-  Entity,
-  ManyToMany,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
 import { Role } from '../../SecurityModule/entity/role.entity';
 import { ChangePassword } from './change-password.entity';
 import { Expose } from 'class-transformer';
@@ -15,78 +7,90 @@ import { Audit } from '../../CommonsModule/entity/audit.entity';
 import { Certificate } from '../../CertificateModule/entity/certificate.entity';
 import { GenderEnum } from '../enum/gender.enum';
 import { EscolarityEnum } from '../enum/escolarity.enum';
+import {
+  Entity,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  PrimaryKey,
+  Property,
+} from 'mikro-orm';
+import { v4 } from 'uuid';
 
 @Entity()
 export class User extends Audit {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column({
+  @Property({
     nullable: false,
   })
   @Expose()
   name: string;
 
-  @Column({ unique: true })
+  @Property({ unique: true })
   @Expose()
   email: string;
 
-  @Column()
+  @Property()
   @Expose()
   password: string;
 
-  @Column({ nullable: false })
+  @Property({ nullable: false })
   @Expose()
   nickname: string;
 
-  @Column({ nullable: false })
+  @Property({ nullable: false })
   @Expose()
   birthday: Date;
 
-  @Column({ type: 'enum', enum: GenderEnum, nullable: false })
+  @Property({ type: 'enum', nullable: false })
   @Expose()
   gender: GenderEnum;
 
-  @Column({ type: 'enum', enum: EscolarityEnum, nullable: false })
+  @Property({ type: 'enum', nullable: false })
   @Expose()
   schooling: EscolarityEnum;
 
-  @Column({ nullable: false })
+  @Property({ nullable: false })
   @Expose()
   institutionName: string;
 
-  @Column({ nullable: false })
+  @Property({ nullable: false })
   @Expose()
   profession: string;
 
-  @Column({ nullable: false })
+  @Property({ nullable: false })
   @Expose()
   address: string;
 
-  @Column({ name: 'url_facebook', nullable: true })
+  @Property({ name: 'url_facebook', nullable: true })
   @Expose()
   urlFacebook?: string;
 
-  @Column({ name: 'url_instagram', nullable: true })
+  @Property({ name: 'url_instagram', nullable: true })
   @Expose()
   urlInstagram?: string;
 
-  @Column({
+  @Property({
     default: '',
   })
   @Expose()
   salt: string;
 
-  @Column({ name: 'facebook_id', nullable: true })
+  @Property({ name: 'facebook_id', nullable: true })
   @Expose()
   facebookId?: string;
 
-  @Column({ name: 'google_sub', nullable: true })
+  @Property({ name: 'google_sub', nullable: true })
   @Expose()
   googleSub?: string;
 
-  @ManyToOne(() => Role, (role: Role) => role.users)
+  @ManyToOne({
+    entity: 'Role',
+    inversedBy: (role: Role) => role.users,
+  })
   @Expose()
   role: Role;
 
@@ -97,7 +101,7 @@ export class User extends Audit {
   @Expose()
   changePasswordRequests: ChangePassword[];
 
-  @ManyToMany('Certificate', (certficate: Certificate) => certficate.users)
+  @ManyToMany('Certificate')
   @Expose()
   certificates: Certificate[];
 

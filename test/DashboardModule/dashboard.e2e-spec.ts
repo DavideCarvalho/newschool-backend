@@ -3,9 +3,6 @@ import * as path from 'path';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import { Connection, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { initializeTransactionalContext } from 'typeorm-transactional-cls-hooked';
 import { Role } from '../../src/SecurityModule/entity/role.entity';
 import { RoleEnum } from '../../src/SecurityModule/enum/role.enum';
 import { ClientCredentials } from '../../src/SecurityModule/entity/client-credentials.entity';
@@ -23,6 +20,8 @@ import { UserService } from '../../src/UserModule/service/user.service';
 import { CourseService } from '../../src/CourseModule/service/course.service';
 import { CourseTakenService } from '../../src/CourseTakenModule/service/course.taken.service';
 import { CourseTakenStatusEnum } from '../../src/CourseTakenModule/enum/enum';
+import { EntityRepository, MikroORM } from 'mikro-orm';
+import { getRepositoryToken } from 'nestjs-mikro-orm';
 
 const stringToBase64 = (string: string) => {
   return Buffer.from(string).toString('base64');
@@ -42,31 +41,30 @@ describe('DashboardController (e2e)', () => {
   const dashboardUrl = `/${Constants.API_PREFIX}/${Constants.API_VERSION_1}/${Constants.DASHBOARD_ENDPOINT}`;
   const adminRoleEnum: RoleEnum = RoleEnum.ADMIN;
 
-  let courseTakenRepository: Repository<CourseTaken>;
-  let courseRepository: Repository<Course>;
-  let userRepository: Repository<User>;
+  let courseTakenRepository: EntityRepository<CourseTaken>;
+  let courseRepository: EntityRepository<Course>;
+  let userRepository: EntityRepository<User>;
 
-  let dbConnection: Connection;
+  let orm: MikroORM;
 
   beforeAll(async () => {
     moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
-    initializeTransactionalContext();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dbConnection = moduleFixture.get(Connection);
+    orm = moduleFixture.get(MikroORM);
 
-    courseRepository = moduleFixture.get<Repository<Course>>(
+    courseRepository = moduleFixture.get<EntityRepository<Course>>(
       getRepositoryToken(Course),
     );
-    userRepository = moduleFixture.get<Repository<User>>(
+    userRepository = moduleFixture.get<EntityRepository<User>>(
       getRepositoryToken(User),
     );
-    courseTakenRepository = moduleFixture.get<Repository<CourseTaken>>(
+    courseTakenRepository = moduleFixture.get<EntityRepository<CourseTaken>>(
       getRepositoryToken(CourseTaken),
     );
 
@@ -82,18 +80,18 @@ describe('DashboardController (e2e)', () => {
       CourseTakenService
     >(CourseTakenService);
 
-    const roleRepository: Repository<Role> = moduleFixture.get<
-      Repository<Role>
+    const roleRepository: EntityRepository<Role> = moduleFixture.get<
+      EntityRepository<Role>
     >(getRepositoryToken(Role));
     let roleAdmin = await roleRepository.findOne({ name: RoleEnum.ADMIN });
     if (!roleAdmin) {
       const role: Role = new Role();
       role.name = RoleEnum.ADMIN;
-      roleAdmin = await roleRepository.save(role);
+      roleAdmin = await roleRepository.create(role);
     }
 
-    const clientCredentialRepository: Repository<ClientCredentials> = moduleFixture.get<
-      Repository<ClientCredentials>
+    const clientCredentialRepository: EntityRepository<ClientCredentials> = moduleFixture.get<
+      EntityRepository<ClientCredentials>
     >(getRepositoryToken(ClientCredentials));
     let clientCredentials = await clientCredentialRepository.findOne({
       name: ClientCredentialsEnum['NEWSCHOOL@FRONT'],
@@ -103,7 +101,7 @@ describe('DashboardController (e2e)', () => {
       clientCredentials.name = ClientCredentialsEnum['NEWSCHOOL@FRONT'];
       clientCredentials.secret = 'test2';
       clientCredentials.role = roleAdmin;
-      await clientCredentialRepository.save(clientCredentials);
+      await clientCredentialRepository.create(clientCredentials);
     }
     authorization = stringToBase64(
       `${clientCredentials.name}:${clientCredentials.secret}`,
@@ -216,8 +214,6 @@ describe('DashboardController (e2e)', () => {
       .set('Authorization', `Bearer ${authRes.body.accessToken}`)
       .expect(200);
 
-    console.log(await courseTakenRepository.find());
-
     expect(dashboardRes.body.totalElements).toEqual(2);
   });
 
@@ -234,8 +230,6 @@ describe('DashboardController (e2e)', () => {
       )
       .set('Authorization', `Bearer ${authRes.body.accessToken}`)
       .expect(200);
-
-    console.log(await courseTakenRepository.find());
 
     expect(dashboardRes.body.totalElements).toEqual(1);
   });
@@ -258,7 +252,7 @@ describe('DashboardController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dbConnection.synchronize(true);
+    await orm.getSchemaGenerator().updateSchema(false, false, true);
     await app.close();
   });
 });

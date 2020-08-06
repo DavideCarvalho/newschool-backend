@@ -2,21 +2,15 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import {
-  initializeTransactionalContext,
-  patchTypeORMRepositoryWithBaseRepository,
-} from 'typeorm-transactional-cls-hooked';
 import { HttpExceptionFilter } from './CommonsModule/httpFilter/http-exception.filter';
 import 'reflect-metadata';
 import * as path from 'path';
 import { AppConfigService as ConfigService } from './ConfigModule/service/app-config.service';
+import { MikroORM } from 'mikro-orm';
 
 async function bootstrap() {
   require('dotenv-flow').config();
   (global as any).appRoot = path.resolve(__dirname);
-
-  initializeTransactionalContext();
-  patchTypeORMRepositoryWithBaseRepository();
 
   const appOptions = { cors: true };
   const app = await NestFactory.create(AppModule, appOptions);
@@ -37,6 +31,11 @@ async function bootstrap() {
   );
 
   const appConfigService = app.get<ConfigService>(ConfigService);
+  if (appConfigService.synchronize) {
+    const orm = app.get<MikroORM>(MikroORM);
+    const generator = orm.getSchemaGenerator();
+    await generator.updateSchema();
+  }
 
   app.useGlobalFilters(new HttpExceptionFilter(appConfigService));
 

@@ -1,9 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
 import { ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter, MailerOptions } from '@nest-modules/mailer';
 import * as path from 'path';
+import { MikroOrmModuleOptions } from 'nestjs-mikro-orm';
 import Rollbar = require('rollbar');
+import globby = require('globby');
+import { Certificate } from '../../CertificateModule/entity/certificate.entity';
+import { Course } from '../../CourseModule/entity/course.entity';
+import { Lesson } from '../../CourseModule/entity/lesson.entity';
+import { Part } from '../../CourseModule/entity/part.entity';
+import { Test } from '../../CourseModule/entity/test.entity';
+import { CourseTaken } from '../../CourseTakenModule/entity/course.taken.entity';
+import { Templates } from '../../MessageModule/entity/templates.entity';
+import { ClientCredentials } from '../../SecurityModule/entity/client-credentials.entity';
+import { Role } from '../../SecurityModule/entity/role.entity';
+import { ChangePassword } from '../../UserModule/entity/change-password.entity';
+import { User } from '../../UserModule/entity/user.entity';
+import { Audit } from '../../CommonsModule/entity/audit.entity';
 
 @Injectable()
 export class AppConfigService {
@@ -85,21 +98,54 @@ export class AppConfigService {
     };
   }
 
-  public getDatabaseConfig(): MysqlConnectionOptions {
+  public async getDatabaseConfig2(): Promise<MikroOrmModuleOptions> {
+    let logger = (message): void => {
+      console.log(message);
+    };
+    if (!this.logging) {
+      logger = (): {} => ({});
+    }
     return {
       type: 'mysql',
       multipleStatements: true,
       entities: [
-        path.resolve(path.join(__dirname, '..', '..')) +
-          '/**/*.entity{.ts,.js}',
+        Audit,
+        Certificate,
+        Course,
+        Lesson,
+        Part,
+        Test,
+        CourseTaken,
+        Templates,
+        ClientCredentials,
+        Role,
+        ChangePassword,
+        User,
       ],
       host: this.databaseHost,
-      database: this.databaseName,
+      dbName: this.databaseName,
       port: this.databasePort,
-      username: this.databaseUsername,
+      user: this.databaseUsername,
       password: this.databasePassword,
-      synchronize: this.synchronize || false,
-      logging: this.logging,
+      logger,
     };
   }
+
+  // public getDatabaseConfig(): MysqlConnectionOptions {
+  //   return {
+  //     type: 'mysql',
+  //     multipleStatements: true,
+  //     entities: [
+  //       path.resolve(path.join(__dirname, '..', '..')) +
+  //         '/**/*.entity{.ts,.js}',
+  //     ],
+  //     host: this.databaseHost,
+  //     database: this.databaseName,
+  //     port: this.databasePort,
+  //     username: this.databaseUsername,
+  //     password: this.databasePassword,
+  //     synchronize: this.synchronize || false,
+  //     logging: this.logging,
+  //   };
+  // }
 }

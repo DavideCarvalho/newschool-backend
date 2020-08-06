@@ -1,15 +1,19 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { User } from './user.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import { Entity, ManyToOne, PrimaryKey, Property } from 'mikro-orm';
+import { v4 } from 'uuid';
 
 @Entity()
 export class ChangePassword extends Audit {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryKey()
+  id: string = v4();
 
-  @Column()
+  @Property()
   expirationTime: number;
 
-  @ManyToOne<User>(() => User, (user: User) => user.changePasswordRequests)
+  @ManyToOne<User>({
+    entity: 'User',
+    inversedBy: (user: User) => user.changePasswordRequests,
+  })
   user: User;
 }

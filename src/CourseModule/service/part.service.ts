@@ -4,19 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
-import { MoreThan } from 'typeorm';
 import { LessonService } from './lesson.service';
 import { PartUpdateDTO } from '../dto/part-update.dto';
 import { PartRepository } from '../repository/part.repository';
 import { Part } from '../entity/part.entity';
 import { NewPartDTO } from '../dto/new-part.dto';
 import { Lesson } from '../entity/lesson.entity';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class PartService {
   constructor(
     private readonly lessonService: LessonService,
+    @InjectRepository(Part)
     private readonly repository: PartRepository,
   ) {}
 
@@ -38,14 +38,15 @@ export class PartService {
       );
     }
 
-    return this.repository.save({
+    const createdPart = await this.repository.create({
       ...part,
       lesson,
       sequenceNumber: 1 + (await this.repository.count({ lesson })),
     });
+    await this.repository.persistAndFlush(createdPart);
+    return createdPart;
   }
 
-  @Transactional()
   public async update(
     id: Part['id'],
     partUpdatedInfo: PartUpdateDTO,
@@ -58,7 +59,13 @@ export class PartService {
       partUpdatedInfo.lessonId === part.lesson.id
         ? part.lesson
         : await this.lessonService.findById(partUpdatedInfo.lessonId);
-    return this.repository.save({ ...part, ...partUpdatedInfo, lesson });
+    const updatedPart = await this.repository.create({
+      ...part,
+      ...partUpdatedInfo,
+      lesson,
+    });
+    await this.repository.persistAndFlush(updatedPart);
+    return updatedPart;
   }
 
   public async getAll(lessonId: string): Promise<Part[]> {
@@ -75,35 +82,46 @@ export class PartService {
     return part;
   }
 
-  @Transactional()
   public async delete(id: Part['id']): Promise<void> {
-    const deletedPart: Part = await this.repository.findOne(
-      { id },
-      { relations: ['lesson'] },
-    );
+    const deletedPart: Part = await this.repository.findOne({ id });
     const partQuantity: number = await this.repository.count({
       lesson: deletedPart.lesson,
     });
-    await this.repository.delete({ id });
+    await this.repository.remove({ id });
+    await this.repository.flush();
 
     if (deletedPart.sequenceNumber === partQuantity) {
       return;
     }
 
-    const parts: Part[] = await this.repository.find({
-      where: {
-        sequenceNumber: MoreThan(deletedPart.sequenceNumber),
+    // const parts: Part[] = await this.repository.find({
+    //   where: {
+    //     sequenceNumber: MoreThan(deletedPart.sequenceNumber),
+    //   },
+    //   order: {
+    //     sequenceNumber: 'ASC',
+    //   },
+    // });
+
+    const parts: Part[] = await this.repository.find(
+      {
+        sequenceNumber: {
+          $gt: deletedPart.sequenceNumber,
+        },
       },
-      order: {
-        sequenceNumber: 'ASC',
+      {
+        orderBy: {
+          sequenceNumber: 'ASC',
+        },
       },
-    });
+    );
 
     for (const part of parts) {
-      await this.repository.save({
+      const updatedPart = await this.repository.create({
         ...part,
         sequenceNumber: part.sequenceNumber - 1,
       });
+      await this.repository.persistAndFlush(updatedPart);
     }
   }
 
@@ -133,7 +151,6 @@ export class PartService {
     });
   }
 
-  @Transactional()
   public async findPartByLessonIdAndSeqNum(
     lesson: string,
     sequenceNumber: number,

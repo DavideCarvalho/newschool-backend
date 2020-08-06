@@ -3,9 +3,6 @@ import * as path from 'path';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import { Connection, EntityManager, QueryRunner, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { initializeTransactionalContext } from 'typeorm-transactional-cls-hooked';
 import { Role } from '../../src/SecurityModule/entity/role.entity';
 import { RoleEnum } from '../../src/SecurityModule/enum/role.enum';
 import { ClientCredentials } from '../../src/SecurityModule/entity/client-credentials.entity';
@@ -17,13 +14,13 @@ import { Constants } from '../../src/CommonsModule/constants';
 import { NewUserDTO } from '../../src/UserModule/dto/new-user.dto';
 import { CourseTaken } from '../../src/CourseTakenModule/entity/course.taken.entity';
 import { User } from '../../src/UserModule/entity/user.entity';
-import { Lesson } from '../../src/CourseModule/entity/lesson.entity';
-import { Part } from '../../src/CourseModule/entity/part.entity';
 import { NewLessonDTO } from '../../src/CourseModule/dto/new-lesson.dto';
 import { NewPartDTO } from '../../src/CourseModule/dto/new-part.dto';
 import { NewTestDTO } from '../../src/CourseModule/dto/new-test.dto';
 import { GenderEnum } from '../../src/UserModule/enum/gender.enum';
 import { EscolarityEnum } from '../../src/UserModule/enum/escolarity.enum';
+import { Connection, EntityRepository, MikroORM } from 'mikro-orm';
+import { getRepositoryToken } from 'nestjs-mikro-orm';
 
 const stringToBase64 = (string: string) => {
   return Buffer.from(string).toString('base64');
@@ -45,46 +42,45 @@ describe('CourseTakenController (e2e)', () => {
   const testUrl = `/${Constants.API_PREFIX}/${Constants.API_VERSION_1}/${Constants.TEST_ENDPOINT}`;
   const adminRoleEnum: RoleEnum = RoleEnum.ADMIN;
 
-  let courseTakenRepository: Repository<CourseTaken>;
-  let courseRepository: Repository<Course>;
-  let userRepository: Repository<User>;
+  let courseTakenRepository: EntityRepository<CourseTaken>;
+  let courseRepository: EntityRepository<Course>;
+  let userRepository: EntityRepository<User>;
 
-  let dbConnection: Connection;
+  let orm: MikroORM;
 
   beforeAll(async () => {
     moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
-    initializeTransactionalContext();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dbConnection = moduleFixture.get(Connection);
+    orm = moduleFixture.get(MikroORM);
 
-    courseRepository = moduleFixture.get<Repository<Course>>(
+    courseRepository = moduleFixture.get<EntityRepository<Course>>(
       getRepositoryToken(Course),
     );
-    userRepository = moduleFixture.get<Repository<User>>(
+    userRepository = moduleFixture.get<EntityRepository<User>>(
       getRepositoryToken(User),
     );
-    courseTakenRepository = moduleFixture.get<Repository<CourseTaken>>(
+    courseTakenRepository = moduleFixture.get<EntityRepository<CourseTaken>>(
       getRepositoryToken(CourseTaken),
     );
 
-    const roleRepository: Repository<Role> = moduleFixture.get<
-      Repository<Role>
+    const roleRepository: EntityRepository<Role> = moduleFixture.get<
+      EntityRepository<Role>
     >(getRepositoryToken(Role));
     let roleAdmin = await roleRepository.findOne({ name: RoleEnum.ADMIN });
     if (!roleAdmin) {
       const role: Role = new Role();
       role.name = RoleEnum.ADMIN;
-      roleAdmin = await roleRepository.save(role);
+      roleAdmin = await roleRepository.create(role);
     }
 
-    const clientCredentialRepository: Repository<ClientCredentials> = moduleFixture.get<
-      Repository<ClientCredentials>
+    const clientCredentialRepository: EntityRepository<ClientCredentials> = moduleFixture.get<
+      EntityRepository<ClientCredentials>
     >(getRepositoryToken(ClientCredentials));
     let clientCredentials = await clientCredentialRepository.findOne({
       name: ClientCredentialsEnum['NEWSCHOOL@FRONT'],
@@ -94,7 +90,7 @@ describe('CourseTakenController (e2e)', () => {
       clientCredentials.name = ClientCredentialsEnum['NEWSCHOOL@FRONT'];
       clientCredentials.secret = 'test2';
       clientCredentials.role = roleAdmin;
-      await clientCredentialRepository.save(clientCredentials);
+      await clientCredentialRepository.create(clientCredentials);
     }
     authorization = stringToBase64(
       `${clientCredentials.name}:${clientCredentials.secret}`,
@@ -157,13 +153,10 @@ describe('CourseTakenController (e2e)', () => {
       .send(newCourseTaken)
       .expect(200);
 
-    const addedCourseTaken = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      { relations: ['user', 'course'] },
-    );
+    const addedCourseTaken = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken.user.id).toEqual(newCourseTaken.userId);
     expect(addedCourseTaken.course.id).toEqual(newCourseTaken.courseId);
   });
@@ -425,21 +418,10 @@ describe('CourseTakenController (e2e)', () => {
       .set('Authorization', `Bearer ${authRes.body.accessToken}`)
       .expect(200);
 
-    const addedCourseTaken = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken.currentTest.id).toEqual(testRes.body.id);
 
     await request(app.getHttpServer())
@@ -449,21 +431,10 @@ describe('CourseTakenController (e2e)', () => {
       .set('Authorization', `Bearer ${authRes.body.accessToken}`)
       .expect(200);
 
-    const addedCourseTaken2 = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken2 = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken2.currentTest.id).toEqual(testRes2.body.id);
   });
 
@@ -577,21 +548,10 @@ describe('CourseTakenController (e2e)', () => {
       )
       .set('Authorization', `Bearer ${authRes.body.accessToken}`);
 
-    const addedCourseTaken = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken.currentPart.id).toEqual(partRes.body.id);
 
     await request(app.getHttpServer())
@@ -600,21 +560,10 @@ describe('CourseTakenController (e2e)', () => {
       )
       .set('Authorization', `Bearer ${authRes.body.accessToken}`);
 
-    const addedCourseTaken2 = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken2 = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken2.currentPart.id).toEqual(partRes2.body.id);
   });
 
@@ -759,21 +708,10 @@ describe('CourseTakenController (e2e)', () => {
       )
       .set('Authorization', `Bearer ${authRes.body.accessToken}`);
 
-    const addedCourseTaken = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken.currentLesson.id).toEqual(lessonRes.body.id);
 
     await request(app.getHttpServer())
@@ -782,26 +720,15 @@ describe('CourseTakenController (e2e)', () => {
       )
       .set('Authorization', `Bearer ${authRes.body.accessToken}`);
 
-    const addedCourseTaken2 = await courseTakenRepository.findOne(
-      {
-        user: await userRepository.findOneOrFail(newCourseTaken.userId),
-        course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
-      },
-      {
-        relations: [
-          'user',
-          'course',
-          'currentLesson',
-          'currentPart',
-          'currentTest',
-        ],
-      },
-    );
+    const addedCourseTaken2 = await courseTakenRepository.findOne({
+      user: await userRepository.findOneOrFail(newCourseTaken.userId),
+      course: await courseRepository.findOneOrFail(newCourseTaken.courseId),
+    });
     expect(addedCourseTaken2.currentLesson.id).toEqual(lessonRes2.body.id);
   });
 
   afterAll(async () => {
-    await dbConnection.synchronize(true);
+    await orm.getSchemaGenerator().updateSchema(false, false, true);
     await app.close();
   });
 });

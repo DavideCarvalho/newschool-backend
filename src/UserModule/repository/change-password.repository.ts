@@ -1,5 +1,7 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { ChangePassword } from '../entity/change-password.entity';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(ChangePassword)
-export class ChangePasswordRepository extends Repository<ChangePassword> {}
+@Repository(ChangePassword)
+export class ChangePasswordRepository extends EntityRepository<
+  ChangePassword
+> {}

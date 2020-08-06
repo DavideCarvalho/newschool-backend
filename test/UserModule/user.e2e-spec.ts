@@ -2,9 +2,6 @@ import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import { Connection, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { initializeTransactionalContext } from 'typeorm-transactional-cls-hooked';
 import { Role } from '../../src/SecurityModule/entity/role.entity';
 import { RoleEnum } from '../../src/SecurityModule/enum/role.enum';
 import { ClientCredentials } from '../../src/SecurityModule/entity/client-credentials.entity';
@@ -15,6 +12,8 @@ import { UserUpdateDTO } from '../../src/UserModule/dto/user-update.dto';
 import { Constants } from '../../src/CommonsModule/constants';
 import { GenderEnum } from '../../src/UserModule/enum/gender.enum';
 import { EscolarityEnum } from '../../src/UserModule/enum/escolarity.enum';
+import { Collection, Connection, EntityRepository, MikroORM } from 'mikro-orm';
+import { getRepositoryToken } from 'nestjs-mikro-orm';
 
 const stringToBase64 = (string: string) => {
   return Buffer.from(string).toString('base64');
@@ -25,7 +24,7 @@ describe('UserController (e2e)', () => {
   let moduleFixture: TestingModule;
   let authorization: string;
   let adminRole: Role;
-  let dbConnection: Connection;
+  let orm: MikroORM;
   const adminRoleEnum: RoleEnum = RoleEnum.ADMIN;
   const userUrl = `/${Constants.API_PREFIX}/${Constants.API_VERSION_1}/${Constants.USER_ENDPOINT}`;
 
@@ -34,29 +33,37 @@ describe('UserController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    initializeTransactionalContext();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dbConnection = moduleFixture.get(Connection);
+    orm = moduleFixture.get(MikroORM);
 
-    const roleRepository: Repository<Role> = moduleFixture.get<
-      Repository<Role>
+    const roleRepository: EntityRepository<Role> = moduleFixture.get<
+      EntityRepository<Role>
     >(getRepositoryToken(Role));
     const role: Role = new Role();
     role.name = RoleEnum.ADMIN;
-    const savedRole = await roleRepository.save(role);
+    const savedRole = await roleRepository.create(role);
+    await roleRepository.persistAndFlush(savedRole);
     adminRole = savedRole;
 
-    const clientCredentialRepository: Repository<ClientCredentials> = moduleFixture.get<
-      Repository<ClientCredentials>
+    const clientCredentialRepository: EntityRepository<ClientCredentials> = moduleFixture.get<
+      EntityRepository<ClientCredentials>
     >(getRepositoryToken(ClientCredentials));
-    const clientCredentials: ClientCredentials = new ClientCredentials();
+    let clientCredentials: ClientCredentials = new ClientCredentials();
     clientCredentials.name = ClientCredentialsEnum['NEWSCHOOL@FRONT'];
     clientCredentials.secret = 'test2';
     clientCredentials.role = savedRole;
-    await clientCredentialRepository.save(clientCredentials);
+    clientCredentials = clientCredentialRepository.create(clientCredentials);
+    await clientCredentialRepository.persistAndFlush(clientCredentials);
+    console.log(await clientCredentialRepository.findAll());
+    console.log(
+      await clientCredentialRepository.find({
+        name: clientCredentials.name,
+        secret: clientCredentials.secret,
+      }),
+    );
     authorization = stringToBase64(
       `${clientCredentials.name}:${clientCredentials.secret}`,
     );
@@ -87,7 +94,7 @@ describe('UserController (e2e)', () => {
             address: 'random address',
             role: adminRoleEnum,
           } as NewUserDTO)
-          .expect(201)
+          .then(res => console.log(res.body))
           .then(() => done());
       });
   });
@@ -251,7 +258,6 @@ describe('UserController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dbConnection.synchronize(true);
-    await app.close();
+    await orm.getSchemaGenerator().updateSchema(false, false, true);
   });
 });

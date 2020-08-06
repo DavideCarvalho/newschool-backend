@@ -3,23 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
-import { MoreThan } from 'typeorm';
 import { PartService } from './part.service';
 import { TestRepository } from '../repository/test.repository';
 import { NewTestDTO } from '../dto/new-test.dto';
 import { Part } from '../entity/part.entity';
 import { TestUpdateDTO } from '../dto/test-update.dto';
 import { Test } from '../entity/test.entity';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class TestService {
   constructor(
     private readonly partService: PartService,
+    @InjectRepository(Test)
     private readonly repository: TestRepository,
   ) {}
 
-  @Transactional()
   public async add(test: NewTestDTO): Promise<Test> {
     const part: Part = await this.partService.findById(test.partId);
     const testSameTitle: Test = await this.repository.findByTitleAndPartId(
@@ -32,14 +31,13 @@ export class TestService {
       );
     }
 
-    return this.repository.save({
+    return this.repository.create({
       ...test,
       part,
       sequenceNumber: 1 + (await this.repository.count({ part })),
     });
   }
 
-  @Transactional()
   public async update(
     id: Test['id'],
     testUpdatedInfo: TestUpdateDTO,
@@ -52,17 +50,15 @@ export class TestService {
       testUpdatedInfo.partId === test.part.id
         ? test.part
         : await this.partService.findById(testUpdatedInfo.partId);
-    return this.repository.save({ ...test, ...testUpdatedInfo, part });
+    return this.repository.create({ ...test, ...testUpdatedInfo, part });
   }
 
-  @Transactional()
   public async getAll(partId: string): Promise<Test[]> {
     return this.repository.find({
       part: await this.partService.findById(partId),
     });
   }
 
-  @Transactional()
   public async findById(id: Test['id']): Promise<Test> {
     const test: Test = await this.repository.findOne({ id });
     if (!test) {
@@ -71,39 +67,47 @@ export class TestService {
     return test;
   }
 
-  @Transactional()
   public async delete(id: Test['id']): Promise<void> {
-    const deletedTest: Test = await this.repository.findOne(
-      { id },
-      { relations: ['part'] },
-    );
+    const deletedTest: Test = await this.repository.findOne({ id });
     const testQuantity: number = await this.repository.count({
       part: deletedTest.part,
     });
-    await this.repository.delete({ id });
+    await this.repository.remove({ id });
 
     if (deletedTest.sequenceNumber === testQuantity) {
       return;
     }
 
-    const tests: Test[] = await this.repository.find({
-      where: {
-        sequenceNumber: MoreThan(deletedTest.sequenceNumber),
+    // const tests: Test[] = await this.repository.find({
+    //   where: {
+    //     sequenceNumber: MoreThan(deletedTest.sequenceNumber),
+    //   },
+    //   order: {
+    //     sequenceNumber: 'ASC',
+    //   },
+    // });
+
+    const tests: Test[] = await this.repository.find(
+      {
+        sequenceNumber: {
+          $gt: deletedTest.sequenceNumber,
+        },
       },
-      order: {
-        sequenceNumber: 'ASC',
+      {
+        orderBy: {
+          sequenceNumber: 'ASC',
+        },
       },
-    });
+    );
 
     for (const test of tests) {
-      await this.repository.save({
+      await this.repository.create({
         ...test,
         sequenceNumber: test.sequenceNumber - 1,
       });
     }
   }
 
-  @Transactional()
   public async checkTest(
     id: Test['id'],
     chosenAlternative: string,
@@ -122,7 +126,6 @@ export class TestService {
     return await this.repository.count({ part });
   }
 
-  @Transactional()
   public async getTestIdByPartIdAndSeqNum(
     part: string,
     sequenceNumber: number,
@@ -145,7 +148,6 @@ export class TestService {
     });
   }
 
-  @Transactional()
   public async findTestByPartIdAndSeqNum(
     part: string,
     sequenceNumber: number,

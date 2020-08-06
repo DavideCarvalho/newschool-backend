@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
 import { LessonRepository } from './repository/lesson.repository';
@@ -25,19 +24,13 @@ import { Course } from './entity/course.entity';
 import { LessonService } from './service/lesson.service';
 import { PartMapper } from './mapper/part.mapper';
 import { Test } from './entity/test.entity';
+import { MikroOrmModule } from 'nestjs-mikro-orm';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Course,
-      CourseRepository,
-      Lesson,
-      LessonRepository,
-      Part,
-      PartRepository,
-      Test,
-      TestRepository,
-    ]),
+    MikroOrmModule.forFeature({
+      entities: [Course, Lesson, Part, Test],
+    }),
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),

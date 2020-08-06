@@ -1,9 +1,9 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { Part } from '../entity/part.entity';
 import { Lesson } from '../entity/lesson.entity';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(Part)
-export class PartRepository extends Repository<Part> {
+@Repository(Part)
+export class PartRepository extends EntityRepository<Part> {
   async findById(id: string): Promise<Part | undefined> {
     return this.findOne({ id });
   }
@@ -16,6 +16,6 @@ export class PartRepository extends Repository<Part> {
   }
 
   async findByIdWithLesson(id: string): Promise<Part | undefined> {
-    return this.findOne({ id }, { relations: ['lesson'] });
+    return this.findOne({ id });
   }
 }

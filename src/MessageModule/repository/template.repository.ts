@@ -1,13 +1,13 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { Templates } from '../entity/templates.entity';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(Templates)
-export class TemplateRepository extends Repository<Templates> {
+@Repository(Templates)
+export class TemplateRepository extends EntityRepository<Templates> {
   public async findById(id: string): Promise<Templates> {
-    return this.findOne({ id });
+    return this.findById(id);
   }
 
   public async findByName(name: string): Promise<Templates> {
-    return this.findOne({ where: { name } });
+    return this.findOne({ name });
   }
 }

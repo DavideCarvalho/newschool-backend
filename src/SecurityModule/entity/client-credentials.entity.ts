@@ -1,24 +1,27 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { ClientCredentialsEnum } from '../enum/client-credentials.enum';
 import { Role } from './role.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import { Entity, ManyToOne, PrimaryKey, Property } from 'mikro-orm';
+import { v4 } from 'uuid';
 
-@Entity({ name: 'client-credentials' })
+@Entity({ tableName: 'client-credentials' })
 export class ClientCredentials extends Audit {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryKey()
+  id: string = v4();
 
-  @Column({
+  @Property({
     type: 'enum',
-    enum: ClientCredentialsEnum,
     nullable: false,
     unique: true,
   })
   name: ClientCredentialsEnum;
 
-  @Column({ type: 'varchar' })
+  @Property({ type: 'varchar' })
   secret: string;
 
-  @ManyToOne<Role>(() => Role, (role: Role) => role.clientCredentials)
+  @ManyToOne<Role>({
+    entity: 'Role',
+    inversedBy: (role: Role) => role.clientCredentials,
+  })
   role: Role;
 }

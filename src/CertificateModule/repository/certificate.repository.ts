@@ -1,8 +1,8 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { Certificate } from '../entity/certificate.entity';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(Certificate)
-export class CertificateRepository extends Repository<Certificate> {
+@Repository(Certificate)
+export class CertificateRepository extends EntityRepository<Certificate> {
   public async findById(id: string): Promise<Certificate | undefined> {
     return this.findOne({ id });
   }

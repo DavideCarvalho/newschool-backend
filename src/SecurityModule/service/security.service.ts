@@ -11,7 +11,6 @@ import { UserService } from '../../UserModule/service/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { TokenExpiredError } from 'jsonwebtoken';
 import { User } from '../../UserModule/entity/user.entity';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { AppConfigService as ConfigService } from '../../ConfigModule/service/app-config.service';
 import { FacebookAuthUserDTO } from '../dto/facebook-auth-user.dto';
 import { ClientCredentialsRepository } from '../repository/client-credentials.repository';
@@ -19,11 +18,15 @@ import { GeneratedTokenDTO } from '../dto/generated-token.dto';
 import { GoogleAuthUserDTO } from '../dto/google-auth-user.dto';
 import { RefreshTokenUserDTO } from '../dto/refresh-token-user.dto';
 import { RoleRepository } from '../repository/role.repository';
+import { InjectRepository } from 'nestjs-mikro-orm';
+import { Role } from '../entity/role.entity';
 
 @Injectable()
 export class SecurityService {
   constructor(
+    @InjectRepository(ClientCredentials)
     private readonly clientCredentialsRepository: ClientCredentialsRepository,
+    @InjectRepository(Role)
     private readonly roleRepository: RoleRepository,
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
@@ -43,7 +46,6 @@ export class SecurityService {
     return this.generateLoginObject(clientCredentials);
   }
 
-  @Transactional()
   public decodeToken(jwt: string): ClientCredentials | User {
     return this.jwtService.verify<ClientCredentials | User>(jwt);
   }
@@ -56,7 +58,6 @@ export class SecurityService {
     return Buffer.from(base64Login, 'base64').toString('ascii');
   }
 
-  @Transactional()
   public async validateUserCredentials(
     base64Login: string,
     username: string,
@@ -116,7 +117,6 @@ export class SecurityService {
     return this.generateLoginObject(user);
   }
 
-  @Transactional()
   public async refreshToken(
     base64Login: string,
     refreshToken: string,

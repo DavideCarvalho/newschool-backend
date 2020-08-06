@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Role } from './entity/role.entity';
 import { RoleService } from './service/role.service';
 import { SecurityController } from './controller/security.controller';
@@ -10,15 +9,13 @@ import { ClientCredentialsRepository } from './repository/client-credentials.rep
 import { UserModule } from '../UserModule/user.module';
 import { ClientCredentials } from './entity/client-credentials.entity';
 import { RoleRepository } from './repository/role.repository';
+import { MikroOrmModule } from 'nestjs-mikro-orm';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Role,
-      RoleRepository,
-      ClientCredentials,
-      ClientCredentialsRepository,
-    ]),
+    MikroOrmModule.forFeature({
+      entities: [Role, ClientCredentials],
+    }),
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),

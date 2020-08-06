@@ -4,7 +4,6 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { CourseRepository } from '../repository/course.repository';
 import { CourseMapper } from '../mapper/course.mapper';
 import { CourseDTO } from '../dto/course.dto';
@@ -12,21 +11,24 @@ import { UserService } from '../../UserModule/service/user.service';
 import { CourseUpdateDTO } from '../dto/course-update.dto';
 import { NewCourseDTO } from '../dto/new-course.dto';
 import { Course } from '../entity/course.entity';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class CourseService {
   constructor(
+    @InjectRepository(Course)
     private readonly repository: CourseRepository,
     private readonly mapper: CourseMapper,
     private readonly userService: UserService,
   ) {}
 
-  @Transactional()
   public async add(newCourse: NewCourseDTO, file): Promise<Course> {
     const course = this.mapper.toEntity(newCourse);
     course.photoName = file.filename;
     try {
-      return await this.repository.save(course);
+      const createdCourse = await this.repository.create(course);
+      await this.repository.persistAndFlush(createdCourse);
+      return createdCourse;
     } catch (e) {
       if (e.code === 'ER_DUP_ENTRY') {
         throw new ConflictException('Course with same title already exists');
@@ -45,23 +47,23 @@ export class CourseService {
     return courses;
   }
 
-  @Transactional()
   public async update(
     id: Course['id'],
     userUpdatedInfo: CourseUpdateDTO,
   ): Promise<Course> {
     const course: Course = await this.findById(id);
-    return this.repository.save(
+    const updatedCourse = await this.repository.create(
       this.mapper.toEntity(({
         ...course,
         ...userUpdatedInfo,
       } as unknown) as CourseDTO),
     );
+    await this.repository.persistAndFlush(updatedCourse);
+    return updatedCourse;
   }
 
-  @Transactional()
   public async getAll(enabled?: boolean): Promise<Course[]> {
-    if (enabled == null) return this.repository.find();
+    if (enabled == null) return this.repository.findAll();
     return this.repository.find({ enabled: enabled });
   }
 
@@ -73,7 +75,6 @@ export class CourseService {
     return course;
   }
 
-  @Transactional()
   public async findBySlug(slug: string): Promise<Course> {
     const course: Course = await this.repository.findBySlug(slug);
     if (!course) {
@@ -82,13 +83,15 @@ export class CourseService {
     return course;
   }
 
-  @Transactional()
   public async delete(id: Course['id']): Promise<void> {
     const course: Course = await this.findById(id);
-    await this.repository.save({ ...course, enabled: false });
+    const removedCourse = await this.repository.create({
+      ...course,
+      enabled: false,
+    });
+    await this.repository.persistAndFlush(removedCourse);
   }
 
-  @Transactional()
   public async findByTitle(title: string): Promise<Course> {
     const course = await this.repository.findByTitle(title);
     if (!course) {

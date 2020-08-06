@@ -1,78 +1,78 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  Unique,
-} from 'typeorm';
 import { Part } from './part.entity';
 import { Expose } from 'class-transformer';
 import { CourseTaken } from '../../CourseTakenModule/entity/course.taken.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import {
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryKey,
+  Property,
+  Unique,
+} from 'mikro-orm';
+import { v4 } from 'uuid';
 
-@Unique(['sequenceNumber', 'part'])
+@Unique({ properties: ['sequenceNumber', 'part'] })
 @Entity()
 export class Test extends Audit {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column({
+  @Property({
     name: 'title',
   })
   @Expose()
   title: string;
 
-  @Column({
+  @Property({
     nullable: true,
     name: 'question',
   })
   @Expose()
   question?: string;
 
-  @Column({
+  @Property({
     name: 'correct_alternative',
   })
   @Expose()
   correctAlternative: string;
 
-  @Column({
+  @Property({
     name: 'first_alternative',
   })
   @Expose()
   firstAlternative: string;
 
-  @Column({
+  @Property({
     name: 'second_alternative',
   })
   @Expose()
   secondAlternative: string;
 
-  @Column({
+  @Property({
     name: 'third_alternative',
   })
   @Expose()
   thirdAlternative: string;
 
-  @Column({
+  @Property({
     name: 'fourth_alternative',
   })
   @Expose()
   fourthAlternative: string;
 
-  @Column({
+  @Property({
     nullable: false,
     name: 'seq_num',
   })
   sequenceNumber: number;
 
-  @Expose()
-  @ManyToOne<Part>(() => Part, (part: Part) => part.tests)
-  @JoinColumn({
-    name: 'part_id',
+  @ManyToOne<Part>({
+    entity: 'Part',
+    inversedBy: (part: Part) => part.tests,
   })
+  @Expose()
   part: Part;
 
   @OneToMany<CourseTaken>(

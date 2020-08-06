@@ -1,12 +1,12 @@
-import { CreateDateColumn, UpdateDateColumn, VersionColumn } from 'typeorm';
+import { Property } from 'mikro-orm';
 
 export abstract class Audit {
-  @CreateDateColumn()
-  createdAt;
+  @Property({ name: 'created_at' })
+  createdAt: Date = new Date();
 
-  @UpdateDateColumn()
-  updatedAt;
+  @Property({ onUpdate: () => new Date() })
+  updatedAt: Date;
 
-  @VersionColumn()
+  @Property({ version: true, default: 1 })
   version;
 }

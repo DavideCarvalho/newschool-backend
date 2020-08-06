@@ -4,18 +4,18 @@ import * as fs from 'fs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../../src/app.module';
-import { Connection, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from '../../src/SecurityModule/entity/role.entity';
 import { RoleEnum } from '../../src/SecurityModule/enum/role.enum';
 import { ClientCredentials } from '../../src/SecurityModule/entity/client-credentials.entity';
 import { ClientCredentialsEnum } from '../../src/SecurityModule/enum/client-credentials.enum';
 import { Constants } from '../../src/CommonsModule/constants';
+import { EntityRepository, MikroORM } from 'mikro-orm';
+import { getRepositoryToken } from 'nestjs-mikro-orm';
 
 describe('UploadController (e2e)', () => {
   let app: INestApplication;
   let moduleFixture: TestingModule;
-  let dbConnection: Connection;
+  let orm: MikroORM;
   const uploadUrl = `/${Constants.API_PREFIX}/${Constants.API_VERSION_1}/${Constants.UPLOAD_ENDPOINT}`;
 
   beforeAll(async () => {
@@ -27,23 +27,23 @@ describe('UploadController (e2e)', () => {
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dbConnection = moduleFixture.get(Connection);
+    orm = moduleFixture.get(MikroORM);
 
-    const roleRepository: Repository<Role> = moduleFixture.get<
-      Repository<Role>
+    const roleRepository: EntityRepository<Role> = moduleFixture.get<
+      EntityRepository<Role>
     >(getRepositoryToken(Role));
     const role: Role = new Role();
     role.name = RoleEnum.ADMIN;
-    const savedRole = await roleRepository.save(role);
+    const savedRole = await roleRepository.create(role);
 
-    const clientCredentialRepository: Repository<ClientCredentials> = moduleFixture.get<
-      Repository<ClientCredentials>
+    const clientCredentialRepository: EntityRepository<ClientCredentials> = moduleFixture.get<
+      EntityRepository<ClientCredentials>
     >(getRepositoryToken(ClientCredentials));
     const clientCredentials: ClientCredentials = new ClientCredentials();
     clientCredentials.name = ClientCredentialsEnum['NEWSCHOOL@FRONT'];
     clientCredentials.secret = 'test2';
     clientCredentials.role = savedRole;
-    await clientCredentialRepository.save(clientCredentials);
+    await clientCredentialRepository.create(clientCredentials);
   });
 
   it('should not get a not found file', async (done) => {
@@ -106,7 +106,7 @@ describe('UploadController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dbConnection.synchronize(true);
+    await orm.getSchemaGenerator().updateSchema(false, false, true);
     await app.close();
   });
 });

@@ -1,9 +1,9 @@
-import { EntityRepository, Repository } from 'typeorm';
 import { Role } from '../entity/role.entity';
 import { RoleEnum } from '../enum/role.enum';
+import { EntityRepository, Repository } from 'mikro-orm';
 
-@EntityRepository(Role)
-export class RoleRepository extends Repository<Role> {
+@Repository(Role)
+export class RoleRepository extends EntityRepository<Role> {
   public async findByRoleName(name: RoleEnum): Promise<Role> {
     return this.findOne({ name });
   }

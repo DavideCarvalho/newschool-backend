@@ -6,18 +6,20 @@ import {
 } from '@nestjs/common';
 import { MailerService } from '@nest-modules/mailer';
 import { TemplateRepository } from '../repository/template.repository';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { TemplateDTO } from '../dto/templates.dto';
 import { TemplateMapper } from '../mapper/template.mapper';
 import { AppConfigService as ConfigService } from '../../ConfigModule/service/app-config.service';
 import { ContactUsDTO } from '../dto/contactus.dto';
 import { EmailDTO } from '../dto/email.dto';
+import { InjectRepository } from 'nestjs-mikro-orm';
+import { Templates } from '../entity/templates.entity';
 
 @Injectable()
 export class MessageService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly appConfigService: ConfigService,
+    @InjectRepository(Templates)
     private readonly templateRepository: TemplateRepository,
     private readonly mapperTemplate: TemplateMapper,
   ) {}
@@ -80,14 +82,13 @@ export class MessageService {
   public async getAllTemplates(): Promise<TemplateDTO[]> {
     try {
       return this.mapperTemplate.toDtoList(
-        await this.templateRepository.find(),
+        await this.templateRepository.findAll(),
       );
     } catch (error) {
       throw new InternalServerErrorException(error);
     }
   }
 
-  @Transactional()
   public async editTemplate(
     updatedTemplate: TemplateDTO,
   ): Promise<TemplateDTO> {
@@ -96,7 +97,7 @@ export class MessageService {
         updatedTemplate.name,
       );
 
-      return await this.templateRepository.save({
+      return await this.templateRepository.create({
         ...template,
         ...updatedTemplate,
       });
@@ -105,7 +106,6 @@ export class MessageService {
     }
   }
 
-  @Transactional()
   public async createTemplate(template: TemplateDTO): Promise<TemplateDTO> {
     try {
       if (await this.templateRepository.findByName(template.name)) {
@@ -114,7 +114,7 @@ export class MessageService {
         );
       }
       return this.mapperTemplate.toDto(
-        await this.templateRepository.save(template),
+        await this.templateRepository.create(template),
       );
     } catch (error) {
       throw new InternalServerErrorException(error);

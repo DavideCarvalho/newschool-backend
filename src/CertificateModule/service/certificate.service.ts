@@ -1,25 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
 import { CertificateRepository } from '../repository/certificate.repository';
 import { Certificate } from '../entity/certificate.entity';
 import { NewCertificateDTO } from '../dto/new-certificate.dto';
 import { CertificateDTO } from '../dto/certificate.dto';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class CertificateService {
-  constructor(private readonly repository: CertificateRepository) {}
+  constructor(
+    @InjectRepository(Certificate)
+    private readonly repository: CertificateRepository,
+  ) {}
 
-  @Transactional()
   public async findAll(): Promise<Certificate[]> {
-    return this.repository.find();
+    return this.repository.findAll();
   }
 
-  @Transactional()
   async save(certificate: NewCertificateDTO): Promise<Certificate> {
-    return await this.repository.save(certificate);
+    const createdCertificate = await this.repository.create(certificate);
+    await this.repository.persistAndFlush(createdCertificate);
+    return createdCertificate;
   }
 
-  @Transactional()
   public async findById(id: Certificate['id']): Promise<Certificate> {
     const foundCertificate:
       | Certificate
@@ -30,7 +32,6 @@ export class CertificateService {
     return foundCertificate;
   }
 
-  @Transactional()
   public async update(
     id: Certificate['id'],
     certificate: CertificateDTO,
@@ -39,9 +40,9 @@ export class CertificateService {
     return this.save({ ...foundCertificate, ...certificate });
   }
 
-  @Transactional()
   public async delete(id: Certificate['id']) {
     await this.findById(id);
-    await this.repository.delete({ id });
+    await this.repository.remove({ id });
+    await this.repository.flush();
   }
 }

@@ -3,10 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from '../../src/app.module';
-import { Connection, EntityManager, QueryRunner, Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
-import { initializeTransactionalContext } from 'typeorm-transactional-cls-hooked';
 import { Role } from '../../src/SecurityModule/entity/role.entity';
 import { RoleEnum } from '../../src/SecurityModule/enum/role.enum';
 import { ClientCredentials } from '../../src/SecurityModule/entity/client-credentials.entity';
@@ -15,6 +12,8 @@ import { GrantTypeEnum } from '../../src/SecurityModule/enum/grant-type.enum';
 import { User } from '../../src/UserModule/entity/user.entity';
 import { GenderEnum } from '../../src/UserModule/enum/gender.enum';
 import { EscolarityEnum } from '../../src/UserModule/enum/escolarity.enum';
+import { EntityRepository, MikroORM } from 'mikro-orm';
+import { getRepositoryToken } from 'nestjs-mikro-orm';
 
 const stringToBase64 = (string: string) => {
   return Buffer.from(string).toString('base64');
@@ -31,8 +30,7 @@ const createHashedPassword = (password: string, salt: string): string => {
 describe('SecurityController (e2e)', () => {
   let app: INestApplication;
   let moduleFixture: TestingModule;
-  let dbConnection: Connection;
-  let queryRunner: QueryRunner;
+  let orm: MikroORM;
   let authorization: string;
   let adminRole: Role;
   let configService: ConfigService;
@@ -42,35 +40,30 @@ describe('SecurityController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    initializeTransactionalContext();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
 
-    dbConnection = moduleFixture.get(Connection);
-    const manager = moduleFixture.get(EntityManager);
+    orm = moduleFixture.get<MikroORM>(MikroORM);
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
     // @ts-ignore
-    queryRunner = manager.queryRunner = dbConnection.createQueryRunner(
-      'master',
-    );
 
-    const roleRepository: Repository<Role> = moduleFixture.get<
-      Repository<Role>
+    const roleRepository: EntityRepository<Role> = moduleFixture.get<
+      EntityRepository<Role>
     >(getRepositoryToken(Role));
     const role: Role = new Role();
     role.name = RoleEnum.ADMIN;
-    const savedRole = await roleRepository.save(role);
+    const savedRole = await roleRepository.create(role);
 
-    const clientCredentialRepository: Repository<ClientCredentials> = moduleFixture.get<
-      Repository<ClientCredentials>
+    const clientCredentialRepository: EntityRepository<ClientCredentials> = moduleFixture.get<
+      EntityRepository<ClientCredentials>
     >(getRepositoryToken(ClientCredentials));
     const clientCredentials: ClientCredentials = new ClientCredentials();
     clientCredentials.name = ClientCredentialsEnum['NEWSCHOOL@FRONT'];
     clientCredentials.secret = 'test';
     clientCredentials.role = savedRole;
-    await clientCredentialRepository.save(clientCredentials);
+    await clientCredentialRepository.create(clientCredentials);
     authorization = stringToBase64(
       `${clientCredentials.name}:${clientCredentials.secret}`,
     );
@@ -116,9 +109,9 @@ describe('SecurityController (e2e)', () => {
       .then(() => done());
   });
 
-  it('should validate grant type password', async (done) => {
-    const userRepository: Repository<User> = moduleFixture.get<
-      Repository<User>
+  it('should validate grant type password', async done => {
+    const userRepository: EntityRepository<User> = moduleFixture.get<
+      EntityRepository<User>
     >(getRepositoryToken(User));
     const user: User = new User();
     const salt = createSalt();
@@ -136,7 +129,7 @@ describe('SecurityController (e2e)', () => {
     user.urlFacebook = 'facebook';
     user.urlInstagram = 'instagram';
     user.role = adminRole;
-    await userRepository.save(user);
+    await userRepository.create(user);
     return request(app.getHttpServer())
       .post('/oauth/token')
       .set('Authorization', `Basic ${authorization}`)
@@ -161,7 +154,7 @@ describe('SecurityController (e2e)', () => {
   });
 
   afterAll(async () => {
-    await dbConnection.synchronize(true);
+    await orm.getSchemaGenerator().updateSchema(false, false, true);
     await app.close();
   });
 });

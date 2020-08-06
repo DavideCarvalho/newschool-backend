@@ -1,34 +1,31 @@
-import {
-  Column,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Entity, ManyToMany, PrimaryKey, Property } from 'mikro-orm';
 import { Expose } from 'class-transformer';
 import { User } from '../../UserModule/entity/user.entity';
+import { v4 } from 'uuid';
 
 @Entity()
 export class Certificate {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column()
+  @Property()
   @Expose()
   title: string;
 
-  @Column()
+  @Property()
   @Expose()
   text: string;
 
   // field created to have in assets different images being passed for each course created
-  @Column()
+  @Property()
   @Expose()
   certificateBackgroundName: string;
 
-  @ManyToMany(() => User, (user: User) => user.certificates)
-  @JoinTable()
+  @ManyToMany(
+    () => User,
+    (user: User) => user.certificates,
+  )
   @Expose()
   users: User[];
 }

@@ -2,13 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { RoleEnum } from '../enum/role.enum';
 import { RoleRepository } from '../repository/role.repository';
 import { Role } from '../entity/role.entity';
-import { Transactional } from 'typeorm-transactional-cls-hooked';
+import { InjectRepository } from 'nestjs-mikro-orm';
 
 @Injectable()
 export class RoleService {
-  constructor(private readonly repository: RoleRepository) {}
+  constructor(
+    @InjectRepository(Role) private readonly repository: RoleRepository,
+  ) {}
 
-  @Transactional()
   public async findByRoleName(name: RoleEnum): Promise<Role> {
     const role: Role = await this.repository.findByRoleName(name);
     if (!role) {

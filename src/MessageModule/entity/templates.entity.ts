@@ -1,27 +1,27 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty, IsString } from 'class-validator';
+import { Entity, PrimaryKey, Property } from 'mikro-orm';
+import { v4 } from 'uuid';
 
 @Entity()
 export class Templates {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column()
+  @Property({ unique: true })
   @Expose()
   @IsNotEmpty()
   @IsString()
-  @Unique(['name'])
   name: string;
 
-  @Column()
+  @Property()
   @Expose()
   @IsNotEmpty()
   @IsString()
   title: string;
 
-  @Column()
+  @Property()
   @Expose()
   @IsNotEmpty()
   @IsString()

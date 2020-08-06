@@ -1,59 +1,59 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  Unique,
-} from 'typeorm';
 import { Lesson } from './lesson.entity';
 import { Test } from './test.entity';
 import { Expose } from 'class-transformer';
 import { CourseTaken } from '../../CourseTakenModule/entity/course.taken.entity';
 import { Audit } from '../../CommonsModule/entity/audit.entity';
+import {
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryKey,
+  Property,
+  Unique,
+} from 'mikro-orm';
+import { v4 } from 'uuid';
 
-@Unique(['sequenceNumber', 'lesson'])
+@Unique({ properties: ['sequenceNumber', 'lesson'] })
 @Entity()
 export class Part extends Audit {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryKey()
   @Expose()
-  id: string;
+  id: string = v4();
 
-  @Column({
+  @Property({
     name: 'title',
   })
   @Expose()
   title: string;
 
-  @Column({
+  @Property({
     name: 'description',
   })
   @Expose()
   description: string;
 
-  @Column({
+  @Property({
     nullable: true,
     name: 'vimeo_url',
   })
   @Expose()
   vimeoUrl?: string;
 
-  @Column({
+  @Property({
     nullable: true,
     name: 'youtube_url',
   })
   @Expose()
   youtubeUrl?: string;
 
-  @ManyToOne<Lesson>('Lesson', (lesson: Lesson) => lesson.parts)
-  @JoinColumn({
-    name: 'lesson_id',
+  @ManyToOne<Lesson>({
+    entity: 'Lesson',
+    inversedBy: (lesson: Lesson) => lesson.parts,
   })
   @Expose()
   lesson: Lesson;
 
-  @Column({
+  @Property({
     name: 'seq_num',
   })
   @Expose()
