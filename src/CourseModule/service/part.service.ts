@@ -15,10 +15,8 @@ import { Lesson } from '../entity/lesson.entity';
 
 @Injectable()
 export class PartService {
-  constructor(
-    private readonly lessonService: LessonService,
-    private readonly repository: PartRepository,
-  ) {}
+  private readonly repository: PartRepository;
+  constructor(private readonly lessonService: LessonService) {}
 
   public async add(part: NewPartDTO): Promise<Part> {
     if (!part.vimeoUrl && !part.youtubeUrl) {

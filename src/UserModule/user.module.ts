@@ -14,12 +14,12 @@ import { GameficationModule } from '../GameficationModule/gamefication.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      User,
-      UserRepository,
-      ChangePassword,
-      ChangePasswordRepository,
-    ]),
+    // TypeOrmModule.forFeature([
+    //   User,
+    //   UserRepository,
+    //   ChangePassword,
+    //   ChangePasswordRepository,
+    // ]),
     HttpModule,
     forwardRef(() => GameficationModule),
   ],

@@ -14,10 +14,8 @@ import { Course } from '../entity/course.entity';
 
 @Injectable()
 export class CourseService {
-  constructor(
-    private readonly repository: CourseRepository,
-    private readonly mapper: CourseMapper,
-  ) {}
+  private readonly repository: CourseRepository;
+  constructor(private readonly mapper: CourseMapper) {}
 
   @Transactional()
   public async add(newCourse: NewCourseDTO, file): Promise<Course> {

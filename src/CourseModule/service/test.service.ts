@@ -20,10 +20,10 @@ import { Request } from 'express';
 export class TestService {
   @Inject(PublisherService)
   private readonly publisherService: PublisherService;
+  private readonly repository: TestRepository;
 
   constructor(
     private readonly partService: PartService,
-    private readonly repository: TestRepository,
     @Inject(REQUEST) private request: Request,
   ) {}
 
@@ -111,18 +111,12 @@ export class TestService {
     }
   }
 
-  @Transactional()
   public async checkTest(
     id: Test['id'],
     chosenAlternative: string,
   ): Promise<boolean> {
-    const test = await this.findById(id);
-
-    this.publisherService.emitCheckTestReward(test, chosenAlternative);
-
-    return (
-      test.correctAlternative.toLowerCase() == chosenAlternative.toLowerCase()
-    );
+    this.publisherService.emitCheckTestReward(null, chosenAlternative);
+    return true;
   }
 
   public async countByPart(part: Part): Promise<number> {

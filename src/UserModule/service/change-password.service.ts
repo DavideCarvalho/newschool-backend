@@ -6,10 +6,9 @@ import { User } from '../entity/user.entity';
 
 @Injectable()
 export class ChangePasswordService {
-  constructor(
-    private readonly repository: ChangePasswordRepository,
-    private readonly configService: ConfigService,
-  ) {}
+  private readonly repository: ChangePasswordRepository;
+
+  constructor(private readonly configService: ConfigService) {}
 
   public async createChangePasswordRequest(
     user: User,

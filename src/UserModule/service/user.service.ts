@@ -37,8 +37,9 @@ export class UserService {
   @Inject(PublisherService)
   private readonly publisherService: PublisherService;
 
+  private readonly repository: UserRepository;
+
   constructor(
-    private readonly repository: UserRepository,
     private readonly http: HttpService,
     private readonly changePasswordService: ChangePasswordService,
     private readonly mailerService: MailerService,

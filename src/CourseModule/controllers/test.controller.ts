@@ -140,8 +140,6 @@ export class TestController {
     summary: 'Check test answer',
     description: 'Check test by test id and chosen alternative',
   })
-  @NeedRole(RoleEnum.ADMIN, RoleEnum.STUDENT)
-  @UseGuards(RoleGuard)
   public async checkTest(
     @Param('id') id: TestDTO['id'],
     @Param('chosenAlternative') chosenAlternative: string,

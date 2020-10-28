@@ -31,18 +31,18 @@ import { CourseTakenRepository } from './repository/course.taken.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Course,
-      CourseRepository,
-      Lesson,
-      LessonRepository,
-      Part,
-      PartRepository,
-      Test,
-      TestRepository,
-      CourseTaken,
-      CourseTakenRepository,
-    ]),
+    // TypeOrmModule.forFeature([
+    //   Course,
+    //   CourseRepository,
+    //   Lesson,
+    //   LessonRepository,
+    //   Part,
+    //   PartRepository,
+    //   Test,
+    //   TestRepository,
+    //   CourseTaken,
+    //   CourseTakenRepository,
+    // ]),
     MulterModule.register({ dest: './upload' }),
     forwardRef(() => UserModule),
     forwardRef(() => GameficationModule),

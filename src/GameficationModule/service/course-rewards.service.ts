@@ -24,56 +24,23 @@ interface CheckTestRule {
 
 @Injectable()
 export class CourseRewardsService implements OnModuleInit {
-  constructor(
-    private readonly achievementRepository: AchievementRepository,
-    private readonly badgeRepository: BadgeRepository,
-    private readonly courseTakenService: CourseTakenService,
-  ) {}
+  private readonly achievementRepository: AchievementRepository;
+  private readonly badgeRepository: BadgeRepository;
+
+  // if we comment line 32, we will be able to see the console.log inside the constructor and onModuleInit.
+  // and the event for checkTestReward will work as expected
+  constructor(private readonly courseTakenService: CourseTakenService) {
+    console.log('inside CourseRewardsService constructor');
+  }
 
   onModuleInit(): void {
+    console.log('inside CourseRewardsService onModuleInit');
     PubSub.subscribe(
       EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
       async (message: string, data: TestOnFirstTake) => {
         await this.checkTestReward(data);
       },
     );
-    PubSub.subscribe(
-      EventNameEnum.COURSE_REWARD_COURSE_NPS,
-      async (message: string, data: CourseNpsRewardDTO) => {
-        await this.courseNpsReward(data);
-      },
-    );
-    PubSub.subscribe(
-      EventNameEnum.COURSE_REWARD_COMPLETE_COURSE,
-      async (message: string, data) => {
-        this.completeCourseReward(data);
-      },
-    );
-  }
-
-  private async completeCourseReward({
-    courseId,
-    userId,
-  }: CompleteCourseRewardDTO): Promise<void> {
-    const completeCourse = await this.courseTakenService.getCompletedByUserIdAndCourseId(
-      userId,
-      courseId,
-    );
-
-    if (!completeCourse) return;
-    const user: User = completeCourse.user;
-    const badge = await this.badgeRepository.findByEventNameAndOrder(
-      EventNameEnum.COURSE_REWARD_COMPLETE_COURSE,
-      1,
-    );
-
-    await this.achievementRepository.save({
-      user,
-      badge,
-      rule: { completion: 100, status: CourseTakenStatusEnum.COMPLETED },
-      completed: true,
-      eventName: EventNameEnum.COURSE_REWARD_COMPLETE_COURSE,
-    });
   }
 
   private async checkTestReward({
@@ -81,109 +48,6 @@ export class CourseRewardsService implements OnModuleInit {
     test,
     user,
   }: TestOnFirstTake): Promise<void> {
-    const points = {
-      1: () =>
-        this.badgeRepository.findByEventNameAndOrder(
-          EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
-          1,
-        ),
-      2: () =>
-        this.badgeRepository.findByEventNameAndOrder(
-          EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
-          2,
-        ),
-      3: () =>
-        this.badgeRepository.findByEventNameAndOrder(
-          EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
-          3,
-        ),
-      4: () =>
-        this.badgeRepository.findByEventNameAndOrder(
-          EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
-          4,
-        ),
-    };
-    let [
-      achievement,
-    ] = await this.achievementRepository.getTestOnFirstTakeByUserAndRuleTestId<
-      CheckTestRule
-    >(test, user);
-
-    if (achievement?.completed) return;
-    if (achievement?.rule?.try >= 4) return;
-
-    if (!achievement) {
-      achievement = {
-        ...achievement,
-        eventName: EventNameEnum.COURSE_REWARD_TEST_ON_FIRST_TAKE,
-        completed: false,
-        rule: {
-          testId: test.id,
-          try: 1,
-        },
-        user,
-      };
-    } else {
-      achievement = {
-        ...achievement,
-        completed: false,
-        rule: {
-          ...achievement.rule,
-          try: achievement.rule.try + 1,
-        },
-      };
-    }
-
-    const answerIsRight =
-      chosenAlternative.toLowerCase() === test.correctAlternative.toLowerCase();
-
-    if (!answerIsRight) return;
-
-    const badge = await points[achievement.rule.try]();
-    achievement = {
-      ...achievement,
-      completed: true,
-      badge,
-    };
-
-    await this.achievementRepository.save(achievement);
-  }
-
-  async courseNpsReward({
-    userId,
-    courseId,
-  }: CourseNpsRewardDTO): Promise<void> {
-    /*
-     * Evento para verificar se o usuário avaliou o curso
-     * Ele deve ganhar os pontos apenas se:
-     * 1- Se ele está no curso
-     * 2- Se ele finalizou o curso
-     * 3- Se ele ainda não ganhou os pontos dessa gameficação
-     * */
-    const badge = await this.badgeRepository.findByEventNameAndOrder(
-      EventNameEnum.COURSE_REWARD_COURSE_NPS,
-      1,
-    );
-
-    const achievement = await this.achievementRepository.findByUserIdAndBadgeId(
-      userId,
-      badge.id,
-    );
-
-    if (achievement) return;
-
-    const courseTaken: CourseTaken = await this.courseTakenService.findCompletedWithRatingByUserIdAndCourseId(
-      userId,
-      courseId,
-    );
-
-    if (!courseTaken.rating) return;
-
-    await this.achievementRepository.save({
-      user: { id: userId },
-      badge,
-      eventName: EventNameEnum.COURSE_REWARD_COURSE_NPS,
-      completed: true,
-    });
+    console.log('inside checkTestReward');
   }
 }

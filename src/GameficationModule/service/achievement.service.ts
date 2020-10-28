@@ -5,7 +5,8 @@ import { BadgeWithQuantityDTO } from '../dto/badge-with-quantity.dto';
 
 @Injectable()
 export class AchievementService {
-  constructor(private readonly repository: AchievementRepository) {}
+  private readonly repository: AchievementRepository;
+  constructor() {}
 
   findBadgesWithQuantityByUser(user: User): Promise<BadgeWithQuantityDTO[]> {
     return this.repository.findBadgesCountByUserId(user.id);

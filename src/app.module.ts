@@ -13,7 +13,6 @@ import { AppConfigService as ConfigService } from './ConfigModule/service/app-co
 import { DashboardModule } from './DashboardModule/dashboard.module';
 import { GameficationModule } from './GameficationModule/gamefication.module';
 import { NotificationModule } from './NotificationModule/notification.module';
-import { JwtModule } from '@nestjs/jwt';
 
 const typeOrmAsyncModule: TypeOrmModuleAsyncOptions = {
   imports: [ConfigModule],
@@ -35,7 +34,7 @@ const mailerAsyncModule: MailerAsyncOptions = {
     NestConfigModule.forRoot({
       isGlobal: true,
     }),
-    TypeOrmModule.forRootAsync(typeOrmAsyncModule),
+    // TypeOrmModule.forRootAsync(typeOrmAsyncModule),
     MailerModule.forRootAsync(mailerAsyncModule),
     SecurityModule,
     UserModule,

@@ -6,7 +6,8 @@ import { Transactional } from 'typeorm-transactional-cls-hooked';
 
 @Injectable()
 export class RoleService {
-  constructor(private readonly repository: RoleRepository) {}
+  private readonly repository: RoleRepository;
+  constructor() {}
 
   @Transactional()
   public async findByRoleName(name: RoleEnum): Promise<Role> {

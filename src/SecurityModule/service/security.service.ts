@@ -1,6 +1,5 @@
 import { GrantTypeEnum } from '../enum/grant-type.enum';
 import {
-  Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -28,8 +27,8 @@ interface GenerateLoginObjectOptions {
 
 @Injectable()
 export class SecurityService {
+  private readonly clientCredentialsRepository: ClientCredentialsRepository;
   constructor(
-    private readonly clientCredentialsRepository: ClientCredentialsRepository,
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
     private readonly configService: ConfigService,

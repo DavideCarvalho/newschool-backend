@@ -6,7 +6,7 @@ import { MessageController } from './controller/message.controller';
 import { MessageService } from './service/message.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TemplateRepository])],
+  // imports: [TypeOrmModule.forFeature([TemplateRepository])],
   controllers: [MessageController],
   providers: [MessageService, TemplateMapper],
   exports: [MessageService],

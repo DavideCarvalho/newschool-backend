@@ -40,8 +40,9 @@ export class CourseTakenService {
   @Inject(PublisherService)
   private readonly publisherService: PublisherService;
 
+  private readonly repository: CourseTakenRepository;
+
   constructor(
-    private readonly repository: CourseTakenRepository,
     private readonly mapper: CourseTakenMapper,
     private readonly userMapper: UserMapper,
     private readonly userService: UserService,

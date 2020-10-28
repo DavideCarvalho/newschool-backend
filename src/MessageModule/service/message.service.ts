@@ -15,10 +15,10 @@ import { EmailDTO } from '../dto/email.dto';
 
 @Injectable()
 export class MessageService {
+  private readonly templateRepository: TemplateRepository;
   constructor(
     private readonly mailerService: MailerService,
     private readonly appConfigService: ConfigService,
-    private readonly templateRepository: TemplateRepository,
     private readonly mapperTemplate: TemplateMapper,
   ) {}
 

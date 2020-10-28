@@ -14,12 +14,12 @@ import { RoleRepository } from './repository/role.repository';
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Role,
-      RoleRepository,
-      ClientCredentials,
-      ClientCredentialsRepository,
-    ]),
+    // TypeOrmModule.forFeature([
+    //   Role,
+    //   RoleRepository,
+    //   ClientCredentials,
+    //   ClientCredentialsRepository,
+    // ]),
     JwtModule.registerAsync({
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),

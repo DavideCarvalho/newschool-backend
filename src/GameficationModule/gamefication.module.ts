@@ -19,12 +19,12 @@ import { AchievementService } from './service/achievement.service';
 @Module({
   controllers: [GameficationController],
   imports: [
-    TypeOrmModule.forFeature([
-      Achievement,
-      AchievementRepository,
-      Badge,
-      BadgeRepository,
-    ]),
+    // TypeOrmModule.forFeature([
+    //   Achievement,
+    //   AchievementRepository,
+    //   Badge,
+    //   BadgeRepository,
+    // ]),
     forwardRef(() => UserModule),
     forwardRef(() => CourseModule),
     NotificationModule,
@@ -34,7 +34,7 @@ import { AchievementService } from './service/achievement.service';
     UserRewardsService,
     PublisherService,
     PusherService,
-    AchievementSubscriber,
+    // AchievementSubscriber,
     GameficationService,
     AchievementService,
   ],

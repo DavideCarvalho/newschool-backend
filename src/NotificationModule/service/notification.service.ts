@@ -7,7 +7,8 @@ import { OrderEnum } from '../../CommonsModule/enum/order.enum';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly repository: NotificationRepository) {}
+  private readonly repository: NotificationRepository;
+  constructor() {}
 
   public async create<T>(
     user: User,
