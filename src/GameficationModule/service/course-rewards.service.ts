@@ -27,7 +27,7 @@ export class CourseRewardsService implements OnModuleInit {
   private readonly achievementRepository: AchievementRepository;
   private readonly badgeRepository: BadgeRepository;
 
-  // if we comment line 32, we will be able to see the console.log inside the constructor and onModuleInit.
+  // if we take courseTakenService off, we will be able to see the console.log inside the constructor and onModuleInit.
   // and the event for checkTestReward will work as expected
   constructor(private readonly courseTakenService: CourseTakenService) {
     console.log('inside CourseRewardsService constructor');
